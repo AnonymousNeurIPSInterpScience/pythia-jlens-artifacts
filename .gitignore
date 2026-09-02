@@ -1,0 +1,256 @@
+# NOTE: git does NOT support inline (end-of-line) comments in .gitignore.
+# Every comment lives on its own line. Provenance for the vendored repos below
+# is in README.md -> "Vendored dependencies".
+
+# ── Secrets — never commit (a vast private key was found in the repo root once) ──
+vast_ssh_key
+vast_ssh_key.pub
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.env
+.env.*
+
+# ── Infra state — per-machine, regenerated each rental ──
+.instance_id
+
+# ── Installed dev skills / local Claude Code config (pinned by skills-lock.json) ──
+.agents/
+.claude/
+
+# ── Vendored third-party GitHub repos (NOT ours to redistribute) ──
+# github.com/anthropics/jacobian-lens @ 581d398
+jacobian-lens/
+# twoxtwo_repo, hawthorne, nguyen (vendored datasets)
+recon/data/
+recon/tok/
+# vendored HF tokenizer caches
+
+# ── Third-party / harmful-content benchmark data — never redistribute (BUILD §9) ──
+# EvalAwareBench-derived prompt corpora (large; contain harmful-content eval items)
+
+# Pile-component corpus plaintext: licensed (CC-BY-SA / Common Crawl / GitHub).
+# Ship the builder + manifest, never the text. manifest.json IS committed and records
+# per-file SHA-256, window count and the disjoint seed-block ranges, so the exact pool
+# is reconstructible with:  python build_corpora.py
+corpora/*.jsonl
+
+# ── Model artifacts — large; SHA-256 in ARTIFACTS.md, backed up off-box ──
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.bin
+
+# ── Large / regenerable data ──
+*.zip
+
+# ── Python caches, build artifacts, virtualenvs ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+**/.venv*/
+.ipynb_checkpoints/
+
+# ── OS / editor junk ──
+.DS_Store
+*.swp
+
+# vendored jlens copy inside jspace vetting bundle
+
+# transient GPU-box result pull staging (rsync)
+
+# E1 session: third-party operator-hunt clones (never committed)
+workspace/
+.instance_id.destroyed-*
+
+# freshly cloned public J-lens implementations (re-fetch, never modify in place)
+thirdparty/
+
+# LaTeX build products. `paper/` and `specs/` hold the SOURCE, which IS tracked; these are
+# everything pdflatex leaves behind. There was a bare `paper/` rule here until 2026-08-15,
+# from the E1 arc, which would now ignore the NeurIPS submission source itself.
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.pdf
+
+# lab / repro runtime state (machine-specific, never shared)
+.fleet
+.pull_receipt_*.json
+
+# E35 containment worker bitmaps — 12 MB derived binary, regenerable in ~15 min from
+# EleutherAI/pile-deduped-pythia-preshuffled shard 0. SHA-256 recorded in ARTIFACTS.md.
+results/found_shard0.tgz
+
+# ── results/ CUT-OVER, staged 2026-08-15, NOT YET FIRED ──
+# The results JSON is the record of record and currently lives in git (418 files, ~8 MB).
+# It is also being mirrored to Hugging Face. Uncomment this block ONLY after
+#   bash repro/04_fetch_results.sh --check
+# reports 0 missing, then `git rm -r --cached results`. Order matters: the window in which
+# results exist in neither place is the failure this staging exists to prevent.
+# results/*.json
+# results/*/*.json
+# results/*/*.npz
+repro/lib/__pycache__/
+
+# ---------------------------------------------------------------------------
+# results/ is mirrored to the private HF repo ${HF_REPO}
+# and untracked from git as of 2026-08-22. The last commit carrying them is
+# e26993c ("saving commit before repo cleanup"), so the history is intact.
+# Sync with:  .venv/bin/python tools/hf_sync_results.py --push
+# Fetch with: repro/04_fetch_results.sh
+# ---------------------------------------------------------------------------
+results/
+
+# The double-blind gate reads its literal identity strings from here. Untracked ON PURPOSE:
+# shipping the pattern list would republish the strings the gate exists to remove.
+tools/deanon_patterns.json
+
+# ---------------------------------------------------------------------------------------------
+# THE PAPER IS NOT PUBLISHED WITH THE CODE.
+#
+# The submission is double-blind and the artifact repository is supplementary material. The .tex
+# carries the manuscript argument, the build carries an [anonymised repository url] placeholder, and
+# paper/ARGUMENT.md and paper/PAPER_HANDOFF.md are working documents in the first person. None of
+# that belongs in the reviewer-visible artifact, and keeping it out is cheaper than scrubbing it.
+#
+# The paper still builds locally: paper/ is untracked, not deleted. `cd paper && ./build_audit.sh`
+# is unaffected. Only the PUBLISHED tree loses it.
+paper/
+
+# Release plan and the review behind it: local working documents, not part of the
+# published artifact. They name a contributor and describe the anonymisation procedure.
+instructions/
+docs/reviews/REPO_REVIEW_2026-08-29.md
+repro/t1_sweep/_run/
+
+# Hugging Face release metadata. These ship at the ROOT of the artifact mirror
+# (LICENSE / ATTRIBUTION.md / README.md), not in the code repository, which has its own.
+release_meta/
+
+# ── maintainer-only anonymisation tooling: NEVER publish ──
+# tools/build_anon_staging.py embeds the deanonymisation patterns (the identity strings and
+# home path) exactly as tools/deanon_patterns.json does. Publishing the scrubber publishes the
+# thing it scrubs for. tools/hf_release_push.py is retired push tooling that names the old mirror.
+tools/build_anon_staging.py
+tools/hf_release_push.py
+
+# Root working note from a handoff session. NOT docs/context/CONTEXT.md (which is the tracked,
+# reviewer-facing one). This copy carries the laptop hostname in prose and must never ship.
+/CONTEXT.md
+
+
+docs/reproducibility/REVIEWER.md
+docs/validity/AUDIT_READINESS.md
+
+# --- internal process / agent-facing material, not part of the reviewer surface ---
+docs/experiments/COVERAGE.md
+docs/experiments/DISAGREEMENTS.md
+docs/experiments/HOW_TO_READ_THIS.md
+docs/experiments/INFLIGHT.md
+docs/experiments/PROVENANCE.md
+docs/experiments/READOUT_DEFECT.md
+docs/experiments/REGISTRATION_LEDGER.md
+docs/experiments/RESULTS_INDEX.md
+docs/reproducibility/INDEPENDENT_VERIFICATION_2026-08-19.md
+docs/reproducibility/PAYLOAD_REDACTIONS.md
+docs/reproducibility/readout_exposure.json
+docs/reproducibility/readout_exposure.txt
+docs/reproducibility/REPRO_COVERAGE_REPORT.md
+docs/reproducibility/REVIEWER_REPRO.md
+docs/reproducibility/t1_evidence/detail_e52_factorial.txt
+docs/reproducibility/t1_evidence/e33_WRONG_BAND_12layer_rerun.json
+docs/reproducibility/t1_evidence/verdicts.tsv
+docs/reproducibility/T1_FINDING_E33_BAND.md
+docs/reproducibility/t1_module_audit.json
+docs/reproducibility/t1_moved_prediction.json
+docs/reproducibility/T1_SWEEP_PREDICTIONS.md
+docs/reproducibility/T1_SWEEP_RESULTS.md
+docs/reproducibility/T1_SWEEP_SPEC.md
+docs/validity/EXPERIMENT_VALIDITY_AUDIT.md
+figures/dispersion_vs_plateau.png
+figures/f0_grid_single.png
+figures/f0_grid.png
+figures/f1_corpus_vs_N.png
+figures/f2_predictor_bakeoff.png
+figures/f3_corpus_set_interaction.png
+figures/f4_exposure_crossover.png
+figures/f5_qladder.png
+figures/f6_fitread_matrix.png
+figures/fA_effect_and_null.png
+figures/fB_band_width.png
+figures/fB_validity.png
+figures/fC_matching.png
+figures/fD_grid.png
+figures/fM_derangement.png
+figures/fM_membership.png
+figures/fU_union.png
+figures/read_vs_N.png
+repro/t1_sweep/README.md
+repro/t1_sweep/t1_check.py
+repro/t1_sweep/t1_classify.py
+repro/t1_sweep/t1_followup.sh
+repro/t1_sweep/t1_predict_moved.py
+repro/t1_sweep/t1_preflight_audit.py
+repro/t1_sweep/t1_sweep.sh
+repro/t1_sweep/t1_thread_probe.py
+
+# --- internal process / agent-facing material, not part of the reviewer surface ---
+docs/experiments/COVERAGE.md
+docs/experiments/DISAGREEMENTS.md
+docs/experiments/HOW_TO_READ_THIS.md
+docs/experiments/INFLIGHT.md
+docs/experiments/PROVENANCE.md
+docs/experiments/READOUT_DEFECT.md
+docs/experiments/REGISTRATION_LEDGER.md
+docs/experiments/RESULTS_INDEX.md
+docs/reproducibility/INDEPENDENT_VERIFICATION_2026-08-19.md
+docs/reproducibility/PAYLOAD_REDACTIONS.md
+docs/reproducibility/readout_exposure.json
+docs/reproducibility/readout_exposure.txt
+docs/reproducibility/REPRO_COVERAGE_REPORT.md
+docs/reproducibility/REVIEWER_REPRO.md
+docs/reproducibility/t1_evidence/detail_e52_factorial.txt
+docs/reproducibility/t1_evidence/e33_WRONG_BAND_12layer_rerun.json
+docs/reproducibility/t1_evidence/verdicts.tsv
+docs/reproducibility/T1_FINDING_E33_BAND.md
+docs/reproducibility/t1_module_audit.json
+docs/reproducibility/t1_moved_prediction.json
+docs/reproducibility/T1_SWEEP_PREDICTIONS.md
+docs/reproducibility/T1_SWEEP_RESULTS.md
+docs/reproducibility/T1_SWEEP_SPEC.md
+docs/validity/EXPERIMENT_VALIDITY_AUDIT.md
+figures/dispersion_vs_plateau.png
+figures/f0_grid_single.png
+figures/f0_grid.png
+figures/f1_corpus_vs_N.png
+figures/f2_predictor_bakeoff.png
+figures/f3_corpus_set_interaction.png
+figures/f4_exposure_crossover.png
+figures/f5_qladder.png
+figures/f6_fitread_matrix.png
+figures/fA_effect_and_null.png
+figures/fB_band_width.png
+figures/fB_validity.png
+figures/fC_matching.png
+figures/fD_grid.png
+figures/fM_derangement.png
+figures/fM_membership.png
+figures/fU_union.png
+figures/read_vs_N.png
+repro/t1_sweep/README.md
+repro/t1_sweep/t1_check.py
+repro/t1_sweep/t1_classify.py
+repro/t1_sweep/t1_followup.sh
+repro/t1_sweep/t1_predict_moved.py
+repro/t1_sweep/t1_preflight_audit.py
+repro/t1_sweep/t1_sweep.sh
+repro/t1_sweep/t1_thread_probe.py
+docs/context/STATE.md
+docs/context/IMPLEMENTATION_RULES.md

@@ -1,0 +1,98 @@
+{
+ "Pile-CC": {
+  "file": "Pile-CC.jsonl",
+  "n": 2400,
+  "sha256": "abbb9f19a6eb6f4c12fb382735832ceec271fece15cfebcf0fe838765d4b1e74",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ]
+ },
+ "StackExchange": {
+  "file": "StackExchange.jsonl",
+  "n": 2400,
+  "sha256": "bc25e2d5775e9719ebcbdaa3bd115d827f72ebf11f47fedb377f8b0a69a28971",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ]
+ },
+ "Wikipedia (en)": {
+  "file": "Wikipedia_en.jsonl",
+  "n": 2400,
+  "sha256": "b30f4cef11add560f7df8ed07a613e3fcc6a4dda865975bec15f2952253bda77",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ]
+ },
+ "Github": {
+  "file": "Github.jsonl",
+  "n": 2400,
+  "sha256": "f2bb459d10cad6c13a8b66c86191bc43df4393ba5b722a5315ea878fad2d1a26",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ]
+ },
+ "USPTO Backgrounds": {
+  "file": "USPTO_Backgrounds.jsonl",
+  "n": 2400,
+  "sha256": "b09ac74bdc8b169ee5c9bea6be481262f743947a92107164f30eca2346e3ccb9",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ]
+ },
+ "_note": "seed_blocks are DISJOINT index ranges; seed k draws its N prompts from block k, so seeds share no prompts and the seed variance is a genuine resampling variance rather than an overlap artifact"
+}

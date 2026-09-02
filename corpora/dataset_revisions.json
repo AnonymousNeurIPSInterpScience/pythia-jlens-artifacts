@@ -1,0 +1,111 @@
+{
+ "_README": [
+  "Dataset revisions pinned 2026-09-01. THE SOURCE OF TRUTH for every corpus build.",
+  "",
+  "WHY. src/build_corpora.py called load_dataset() with no revision=, so the pool depended on",
+  "whatever the upstream dataset was on the day you ran it. the release procedure",
+  "finding B0 recorded that and concluded the pool was not regenerable. A rebuild on 2026-08-31",
+  "in fact reproduced 8 of 11 corpora BIT-IDENTICALLY -- evidence the upstream had not moved, not",
+  "a guarantee it never would. These pins turn that evidence into a guarantee.",
+  "",
+  "`sha` is the dataset repo commit on the Hub. Pass it as revision= to load_dataset().",
+  "`config` is load_dataset()'s SECOND POSITIONAL argument (the config/subset name), NOT a locale;",
+  "null means the dataset declares no configs and none may be passed."
+ ],
+ "monology/pile-uncopyrighted": {
+  "used_by": "src/build_corpora.py",
+  "config": null,
+  "split": "train",
+  "supplies": [
+   "Pile-CC",
+   "StackExchange",
+   "Wikipedia (en)",
+   "Github",
+   "USPTO Backgrounds"
+  ],
+  "sha": "3be90335b66f24456a5d6659d9c8d208c0357119",
+  "pinned_on": "2026-09-01"
+ },
+ "wikimedia/wikipedia": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": "20231101.en",
+  "split": "train",
+  "supplies": [
+   "OOD_Wikipedia_2023"
+  ],
+  "sha": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa",
+  "pinned_on": "2026-09-01"
+ },
+ "neuralwork/arxiver": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": null,
+  "split": "train",
+  "supplies": [
+   "OOD_arXiv_2023"
+  ],
+  "sha": "698a6662e77fd5dd45dbbec988abc8123e5fa086",
+  "pinned_on": "2026-09-01"
+ },
+ "RealTimeData/bbc_news_alltime": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": "2024-06",
+  "split": "train",
+  "supplies": [
+   "OOD_News_2024"
+  ],
+  "sha": "8dd1ecdc92ac43f9c04a3da3e945537dbb08179b",
+  "pinned_on": "2026-09-01"
+ },
+ "common-pile/comma_v0.1_training_dataset": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": null,
+  "split": "train",
+  "supplies": [
+   "OOD_CommonPile"
+  ],
+  "sha": "5afc546db324e7f39f297ba757c9a60547151e7c",
+  "pinned_on": "2026-09-01"
+ },
+ "HuggingFaceFW/fineweb": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": "sample-10BT",
+  "split": "train",
+  "supplies": [
+   "TRAP_FineWeb"
+  ],
+  "sha": "9bb295ddab0e05d785b879661af7260fed5140fc",
+  "pinned_on": "2026-09-01"
+ },
+ "MedRAG/pubmed": {
+  "used_by": "src/build_ood_corpora.py",
+  "config": null,
+  "split": "train",
+  "supplies": [
+   "CONTROL_PubMed_2023"
+  ],
+  "sha": "33da3593d5756bc04c8909f170003c0b14197957",
+  "pinned_on": "2026-09-01"
+ },
+ "EleutherAI/pile-deduped-pythia-preshuffled": {
+  "used_by": "experiments/t35_containment.py",
+  "config": null,
+  "split": null,
+  "supplies": [
+   "the Pythia training stream itself, for E35/M1 containment"
+  ],
+  "sha": "4647773ea142ab1ff5694602fa104bbf49088408",
+  "pinned_on": "2026-09-01"
+ },
+ "_DERIVED_CORPORA": {
+  "_note": "Corpora produced from another corpus in this tree, not loaded from the Hub. They have NO dataset revision of their own by construction. Their full derivation rule and parent hash live in corpora/manifest_ood.json. Recorded here so this file's source-of-truth claim covers every corpus on disk.",
+  "OOD_News_2024_dedup": {
+   "derived_from": "OOD_News_2024",
+   "parent_upstream_repo": "RealTimeData/bbc_news_alltime",
+   "parent_sha": "8dd1ecdc92ac43f9c04a3da3e945537dbb08179b",
+   "rule": "exact-text dedup, first occurrence kept, parent order preserved (2400 -> 1598)",
+   "full_record": "corpora/manifest_ood.json -> OOD_News_2024_dedup.derived_from",
+   "revision": null,
+   "revision_note": "INTENTIONALLY null \u2014 derived, not loaded. Never fabricate one."
+  }
+ }
+}

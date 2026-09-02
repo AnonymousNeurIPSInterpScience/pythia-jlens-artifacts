@@ -1,0 +1,83 @@
+{
+  "_what": "Recorded script hashes that are NOT obtainable from this tree, each with the reason and what stands in its place. tools/script_provenance.py --verify accepts exactly these and fails on anything else.",
+  "_rule": "An entry is admissible only if the NUMBER survives elsewhere. If a number exists only in a file whose code is gone, delete the entry and retract the number.",
+  "exceptions": [
+    {
+      "results_file": "results/cv6/cv6_c0_scorer_equivalence.json",
+      "script": "experiments/cv6_per_family_ladder.py",
+      "sha256": "b7e6b609a847",
+      "why": "CV6 ran with provenance.git.dirty = true (16 dirty files, this script among them) and that working-tree state was never committed. The blob is in no commit.",
+      "what_stands_in_its_place": "The control's result is recorded independently in results/cv6_per_family_ladder.json:controls.C0_scorer_equivalence (worst_abs_dz 0.0, worst_abs_drank 0.0, fires true), and THAT file's script hash matches experiments/cv6_per_family_ladder.py on disk. No number is lost; only the exact bytes of one intermediate edit are.",
+      "declared": "2026-08-24"
+    },
+    {
+      "results_file": "results/e51_interaction_variance.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "66832a320192",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "The script of the same path on disk. The ONLY difference is a comment or docstring line in which the platform's name was replaced by the neutral phrase used throughout this tree. No statement, no constant and no control changed, so every number the script emits is reproducible from the file as published. This results file is cited by neither the paper nor its table generator.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/ladder410_cpu/e51_interaction_cpu.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "66832a320192",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "The script of the same path on disk. The ONLY difference is a comment or docstring line in which the platform's name was replaced by the neutral phrase used throughout this tree. No statement, no constant and no control changed, so every number the script emits is reproducible from the file as published. This results file is cited by neither the paper nor its table generator.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/e64_instrument_cost.json",
+      "script": "experiments/t64_instrument_cost.py",
+      "sha256": "a701f985595f",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "The script of the same path on disk. The ONLY difference is a comment or docstring line in which the platform's name was replaced by the neutral phrase used throughout this tree. No statement, no constant and no control changed, so every number the script emits is reproducible from the file as published. This results file is cited by neither the paper nor its table generator.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/e62_interaction_b613.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "849f3e2ab421",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "repro/scripts_at_run/959b5e7266e7__t51_interaction_variance.py, the same file with the platform name removed from one docstring line. The archive is content-addressed, so the filename was re-derived from the redacted bytes; keeping the old name over new content would have made the archive lie. Not cited by the paper.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/r4c/e51_interaction_min.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "849f3e2ab421",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "repro/scripts_at_run/959b5e7266e7__t51_interaction_variance.py, the same file with the platform name removed from one docstring line. The archive is content-addressed, so the filename was re-derived from the redacted bytes; keeping the old name over new content would have made the archive lie. Not cited by the paper.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/r4c/e51_interaction_mean.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "849f3e2ab421",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "repro/scripts_at_run/959b5e7266e7__t51_interaction_variance.py, the same file with the platform name removed from one docstring line. The archive is content-addressed, so the filename was re-derived from the redacted bytes; keeping the old name over new content would have made the archive lie. Not cited by the paper.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/r4c/e51_interaction_best1L.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "849f3e2ab421",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "repro/scripts_at_run/959b5e7266e7__t51_interaction_variance.py, the same file with the platform name removed from one docstring line. The archive is content-addressed, so the filename was re-derived from the redacted bytes; keeping the old name over new content would have made the archive lie. Not cited by the paper.",
+      "declared": "2026-08-29"
+    },
+    {
+      "results_file": "results/r4c/e51_interaction_persist.json",
+      "script": "experiments/t51_interaction_variance.py",
+      "sha256": "849f3e2ab421",
+      "why": "Redacted for double-blind review. The pre-redaction bytes named an external AI-review platform in a comment, which is a deanonymisation surface, so they cannot be published. H12 and H13 pull in opposite directions here and H12 wins: the name goes, and the hash it moves is declared here rather than left to fail silently.",
+      "what_stands_in_its_place": "repro/scripts_at_run/959b5e7266e7__t51_interaction_variance.py, the same file with the platform name removed from one docstring line. The archive is content-addressed, so the filename was re-derived from the redacted bytes; keeping the old name over new content would have made the archive lie. Not cited by the paper.",
+      "declared": "2026-08-29"
+    }
+  ],
+  "_superseded_archive_names": {
+    "_what": "repro/scripts_at_run/ is content-addressed: the filename prefix IS the sha256 of the bytes. Redaction moved two of them. Both mappings are recorded so a holder of a pre-release copy can line them up.",
+    "849f3e2ab421__t51_interaction_variance.py": "959b5e7266e7__t51_interaction_variance.py",
+    "9a821f4a7828__t51_interaction_variance.py": "b96ab6b02b06__t51_interaction_variance.py"
+  }
+}

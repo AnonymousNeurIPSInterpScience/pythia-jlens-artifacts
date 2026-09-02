@@ -1,0 +1,51 @@
+# Top-level CPU-side environment for `uv sync`.
+#
+# This is a *virtual* project (deps only, no build) — the runnable code lives in
+# standalone scripts under pythia/ (the live programme). Prior arcs (
+# tree on 2026-08-12 and live on in git history; see REPRODUCIBILITY.md section 6.
+#
+# START HERE:  ./lab doctor  ->  ./lab setup  ->  ./lab verify
+#
+# The `jlens` package itself is vendored (github.com/anthropics/jacobian-lens @
+# 581d398, Apache-2.0), gitignored, and editable-installed AFTER `uv sync`:
+#     uv pip install -e jacobian-lens --no-deps
+# (its own deps — torch, transformers>=5.5, numpy, huggingface_hub — are declared
+# below so --no-deps is safe).
+#
+# GPU box note: the runtime torch on a rented box is NOT the unpinned torch below.
+# It is installed by repro/lib/box_bootstrap.sh from the *cu128* channel:
+#   pip install --force-reinstall torch torchvision torchaudio \
+#       --index-url https://download.pytorch.org/whl/cu128
+# All three together -- the 2.4.0 image's torchvision and torchaudio both break the
+# GPTNeoX import. The old cu124 trio (torch==2.6.0/0.21.0/2.6.0) is DEAD as of
+# 2026-08-12: nvidia-cudnn-cu12==9.1.0.70 was pulled from the index and torch 2.6.0
+# pins it exactly. See COMPUTE.md section 5.
+# Locally (Mac CPU / smoke suite) the default wheels are fine.
+
+[project]
+name = "mechinterp-research"
+version = "0.1.0"
+description = "Jacobian-lens instrument validity — CPU-side deps"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "transformers>=5.5",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "huggingface_hub",
+    "datasets",
+    "accelerate",
+    "safetensors",
+    # figures/make_audit_figures.py is invoked by paper/build_audit.sh, so the paper does not
+    # build without this. It was undeclared until 2026-08-24, when a clean `uv sync` could not
+    # build the submission.
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.uv]
+# Virtual project: install the dependency set, do not try to build/package this repo.
+package = false

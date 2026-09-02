@@ -1,0 +1,417 @@
+#!/usr/bin/env bash
+# lab — one entry point for the whole repo. Provision, run, watch, pull, tear down.
+#
+#   ./lab                     the map: what exists, what is running, what it costs
+#   ./lab help                every subcommand
+#
+# Everything here delegates to repro/*.sh, which stay independently runnable. This file
+# adds the two things a pile of scripts cannot: a fleet (N boxes provisioned in parallel,
+# addressed as one) and tmux (jobs that survive your laptop closing, and a live dashboard).
+#
+# Design rules:
+#   - never destroy without a verified pull receipt
+#   - never spend without printing the price first
+#   - every remote job runs inside a named remote tmux session, so nothing dies on hangup
+
+set -euo pipefail
+LAB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$LAB_ROOT/repro/lib/common.sh"
+
+FLEET_FILE="$REPO_ROOT/.fleet"          # one "alias<TAB>instance_id" per line
+LOCAL_SESSION="lab"                      # local tmux session for the dashboard
+REMOTE_SESSION="train"                   # remote tmux session; durable across ssh drops
+
+fleet_aliases() { [ -f "$FLEET_FILE" ] && cut -f1 "$FLEET_FILE" || true; }
+fleet_id()      { [ -f "$FLEET_FILE" ] && awk -v a="$1" '$1==a{print $2}' "$FLEET_FILE" || true; }
+fleet_add()     { mkdir -p "$(dirname "$FLEET_FILE")"; printf "%s\t%s\n" "$1" "$2" >> "$FLEET_FILE"; }
+fleet_rm()      { [ -f "$FLEET_FILE" ] && grep -v "^$1	" "$FLEET_FILE" > "$FLEET_FILE.tmp" 2>/dev/null; mv -f "$FLEET_FILE.tmp" "$FLEET_FILE" 2>/dev/null || true; }
+
+# ============================================================ help
+cmd_help() {
+cat <<'EOF'
+  lab — the control surface for this repo
+
+  GETTING SET UP                                              cost
+    ./lab doctor                  what you must configure     free
+    ./lab setup                   build .venv + vendor jlens  free
+    ./lab fetch                   artifacts from HF (required) ~50 MB
+    ./lab fetch --all             every lens + corpus pool     ~3 GB
+    ./lab results                 results JSON from the mirror ~8 MB
+    ./lab verify                  TIER 0 gate, run it always  free
+
+  BEFORE SPENDING
+    ./lab cost <model> <n> [gpu]  price one fit               free
+    ./lab cost --table            every model, every GPU      free
+    ./lab cost --experiment e28   a named experiment          free
+    ./lab offers [gpu] [n] [max$] live offers, best-value first
+
+  THE FLEET
+    ./lab up <n> [gpu] [max$]     rent n boxes, in parallel   $$$
+    ./lab push [alias]            rsync code to a box (or all)
+    ./lab preflight [alias]       on-box gate; do not skip
+    ./lab run <alias> <cmd>       launch in a durable remote tmux
+    ./lab shard <file>            one line = one job, spread over the fleet
+    ./lab status                  boxes, GPU, progress, burn rate
+    ./lab util [--watch N]        SM/HBM util vs roofline expectation; flags <80%
+    ./lab watch                   tmux dashboard, one window per box
+    ./lab logs <alias>            tail a box's job log
+    ./lab pull [alias]            pull + hash-verify
+    ./lab down [alias]            destroy — refuses without a receipt
+    ./lab down --all              destroy the whole fleet
+
+  UPKEEP
+    ./lab health                  the standing reproducibility audit
+    ./lab exp list                every experiment module
+    ./lab exp run <module>        run one, with the exact stored flags
+    ./lab mirror                  push artifacts to Hugging Face
+    ./lab docs                    rebuild every PDF, delete intermediates
+
+  Read repro/README.md for the long form, COMPUTE.md for the hardware model.
+EOF
+}
+
+# ============================================================ map (default)
+cmd_map() {
+  printf "\n  %smechinterp-research%s  —  Jacobian-lens distributional limits\n" "$B" "$N"
+  printf "  %s\n" "$(git -C "$REPO_ROOT" log -1 --format='%h %s' 2>/dev/null | cut -c1-72)"
+
+  hdr "Local"
+  [ -x "$PY" ] && ok "venv  $("$PY" -V 2>&1 | awk '{print $2}')" || bad "no venv — ./lab setup"
+  if [ -d "$VENDOR_DIR/.git" ]; then
+    g="$(git -C "$VENDOR_DIR" rev-parse --short HEAD)"
+    [ "$g" = "${VENDOR_PIN:0:7}" ] && ok "jlens  pinned $g" || bad "jlens  at $g, expected ${VENDOR_PIN:0:7}"
+  else bad "jlens  absent — ./lab setup"; fi
+  # RECURSIVE. Operators live under results/lenses/**, results/e48/**, results/r6/** and more;
+  # a non-recursive results/*.pt glob matched ZERO and reported "0 lenses" on a full tree.
+  n_pt="$(find "$REPO_ROOT/results" -name '*.pt' 2>/dev/null | wc -l | tr -d ' ' || true)"
+  n_js="$(find "$REPO_ROOT/results" -name '*.json' 2>/dev/null | wc -l | tr -d ' ' || true)"
+  info "artifacts: $n_pt operators, $n_js results files"
+  if [ "${n_js:-0}" -eq 0 ]; then
+    bad "results/ is empty — it is gitignored in full. Run:  bash repro/04_fetch_results.sh"
+  fi
+
+  hdr "Fleet"
+  if command -v vastai >/dev/null 2>&1 && vastai show user --raw >/dev/null 2>&1; then
+    local tmp; tmp="$(mktemp)"
+    vastai show instances --raw 2>/dev/null > "$tmp" || echo "[]" > "$tmp"
+    "$PY" - "$FLEET_FILE" "$tmp" <<'PYEOF'
+import json, sys, os
+ff, raw = sys.argv[1], sys.argv[2]
+try: d = json.load(open(raw))
+except Exception: d = []
+named = {}
+if os.path.exists(ff):
+    for line in open(ff):
+        p = line.rstrip("\n").split("\t")
+        if len(p) == 2: named[p[1]] = p[0]
+if not d:
+    print("  nothing rented"); raise SystemExit
+tot = 0.0
+for i in d:
+    dph = i.get("dph_total", 0) or 0; tot += dph
+    alias = named.get(str(i["id"]), "-")
+    print(f"  {alias:<10} {i['id']:<10} {str(i.get('gpu_name'))[:12]:<13}"
+          f"${dph:.3f}/h  {i.get('actual_status')}")
+print(f"  {'':<10} {'':<10} {'TOTAL':<13}${tot:.3f}/h  = ${tot*24:.0f}/day")
+PYEOF
+    rm -f "$tmp"
+  else info "vastai not configured — ./lab doctor"; fi
+
+  hdr "Next"
+  echo "  ./lab help      every subcommand"
+  echo "  ./lab health    the reproducibility audit"
+}
+
+# ============================================================ thin delegations
+cmd_doctor()    { bash "$REPRO_DIR/00_check_config.sh" "$@"; }
+cmd_setup()     { bash "$REPRO_DIR/01_setup_local.sh" "$@"; }
+cmd_verify()    { bash "$REPRO_DIR/02_verify_local.sh" "$@"; }
+cmd_fetch()     { bash "$REPRO_DIR/03_fetch_artifacts.sh" "$@"; }
+cmd_results()   { bash "$REPRO_DIR/04_fetch_results.sh" "$@"; }
+cmd_cost()      { bash "$REPRO_DIR/20_cost_estimate.sh" "$@"; }
+cmd_offers()    { bash "$REPRO_DIR/11_vast_find_offers.sh" "$@"; }
+cmd_health()    { bash "$REPRO_DIR/30_repo_health.sh" "$@"; }
+cmd_util()      { bash "$REPRO_DIR/lib/gpu_monitor.sh" "$@"; }
+cmd_preflight() { for a in $(_targets "${1:-}"); do hdr "preflight $a"; bash "$REPRO_DIR/13_vast_preflight.sh" "$a" || true; done; }
+
+_targets() { if [ -n "${1:-}" ]; then echo "$1"; else fleet_aliases; fi; }
+
+# ============================================================ up — rent N boxes at once
+cmd_up() {
+  local n="${1:?usage: ./lab up <n_boxes> [gpu] [max_dph]}" gpu="${2:-L40S}" maxdph="${3:-1.20}"
+  need_cmd vastai "pip install --user vastai"
+
+  hdr "Hunting $n x $gpu under \$$maxdph/h"
+  local ids
+  ids="$(vastai search offers "gpu_name=$gpu num_gpus=1 rentable=true dph_total<$maxdph" -o 'dph' --raw 2>/dev/null \
+    | "$PY" -c "
+import json,sys
+o=[x for x in json.load(sys.stdin) if (x.get('reliability2') or 0)>=0.95]
+o.sort(key=lambda x: x['dph_total'])
+print(' '.join(str(x['id']) for x in o[:$n]))
+print('  '+'\n  '.join(f\"{x['id']}  \${x['dph_total']:.3f}/h  rel {x.get('reliability2',0):.3f}  {x.get('geolocation')}\" for x in o[:$n]), file=sys.stderr)
+")" || die "offer search failed"
+  [ -n "$ids" ] || die "no offers matched — raise max_dph or try another GPU"
+
+  local count; count=$(echo "$ids" | wc -w | tr -d ' ')
+  [ "$count" -eq "$n" ] || warn "only $count of $n requested offers available"
+  local est; est="$("$PY" -c "print(f'{$count*$maxdph:.2f}')")"
+  warn "up to \$$est/h once all $count are running"
+  confirm "Rent $count box(es)?"
+
+  local i=0
+  for id in $ids; do
+    local alias="box$i"
+    info "provisioning $alias from offer $id ..."
+    ( FORCE=1 bash "$REPRO_DIR/12_vast_provision.sh" "$id" "$alias" 60 \
+        > "$REPO_ROOT/logs/provision_$alias.log" 2>&1 \
+        && echo "  $G ok  $alias ready$N" || echo "  $R FAIL $alias — see logs/provision_$alias.log$N" ) &
+    i=$((i+1))
+  done
+  info "provisioning $count boxes in parallel; this takes 3-6 minutes"
+  wait
+
+  : > "$FLEET_FILE"
+  i=0
+  for id in $ids; do fleet_add "box$i" "$id"; i=$((i+1)); done
+  ok "fleet recorded in .fleet"
+  cmd_status
+}
+
+# ============================================================ push — code to box(es)
+cmd_push() {
+  for a in $(_targets "${1:-}"); do
+    hdr "push -> $a"
+    rsync -az --delete \
+      --exclude '*.pt' --exclude '*.pdf' --exclude '__pycache__' --exclude '.git' \
+      --exclude '.venv' --exclude 'jacobian-lens' --exclude 'thirdparty' \
+      --exclude 'corpora/*.jsonl' --exclude 'results/*.pt' --exclude 'results/e48' \
+      --exclude 'logs' --exclude 'paper' \
+      "$REPO_ROOT/" "$a:$REMOTE_CWD/" && ok "$a synced" || bad "$a failed"
+  done
+  info "corpora and .pt are excluded on purpose: rebuild corpora on the box with"
+  info "src/build_corpora.py so every box draws from the same recorded pool."
+}
+
+# ============================================================ run — durable remote tmux
+cmd_run() {
+  local alias="${1:?usage: ./lab run <alias> <command...>}"; shift
+  local cmd="$*"
+  [ -n "$cmd" ] || die "no command given"
+  local win; win="job$(date -u +%H%M%S)"
+  hdr "$alias :: $win"
+  info "$cmd"
+  ssh "$alias" "tmux has-session -t $REMOTE_SESSION 2>/dev/null || tmux new-session -d -s $REMOTE_SESSION"
+  ssh "$alias" "tmux new-window -t $REMOTE_SESSION -n $win \
+      'cd $REMOTE_CWD && export NVIDIA_TF32_OVERRIDE=0 && $cmd 2>&1 | tee -a $REMOTE_CWD/lab_$win.log; echo; echo JOB-EXIT-\$?; sleep 86400'"
+  ok "launched in remote tmux '$REMOTE_SESSION', window '$win'"
+  info "it survives ssh dropping and your laptop closing"
+  echo "    ./lab logs $alias        tail it"
+  echo "    ./lab watch              dashboard"
+  echo "    ssh $alias -t tmux attach -t $REMOTE_SESSION"
+}
+
+# ============================================================ shard — spread jobs
+cmd_shard() {
+  local file="${1:?usage: ./lab shard <jobfile>   (one shell command per line)}"
+  [ -f "$file" ] || die "no such file: $file"
+  local aliases; aliases=($(fleet_aliases))
+  [ "${#aliases[@]}" -gt 0 ] || die "empty fleet — ./lab up <n> first"
+  local jobs=(); while IFS= read -r l; do [ -n "$l" ] && [[ "$l" != \#* ]] && jobs+=("$l"); done < "$file"
+  hdr "${#jobs[@]} job(s) over ${#aliases[@]} box(es), round-robin"
+  local i=0
+  for j in "${jobs[@]}"; do
+    local a="${aliases[$((i % ${#aliases[@]}))]}"
+    info "$a <- ${j:0:70}"
+    cmd_run "$a" "$j" >/dev/null
+    i=$((i+1))
+  done
+  ok "dispatched"
+  cmd_status
+}
+
+# ============================================================ status
+cmd_status() {
+  hdr "Fleet"
+  local aliases; aliases=($(fleet_aliases))
+  if [ "${#aliases[@]}" -eq 0 ]; then info "no fleet recorded (.fleet empty)"; fi
+  printf "  %-8s %-10s %-6s %-8s %-10s %s\n" alias id gpu% vram fits log
+  for a in "${aliases[@]:-}"; do
+    [ -n "$a" ] || continue
+    local id; id="$(fleet_id "$a")"
+    local r; r="$(ssh -o ConnectTimeout=6 -o BatchMode=yes "$a" \
+      'nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null | head -1;
+       ls /workspace/results/*_provenance.json 2>/dev/null | wc -l;
+       ls -t /workspace/lab_*.log /workspace/*.log 2>/dev/null | head -1' 2>/dev/null || echo "unreachable")"
+    local util mem fits log
+    util="$(echo "$r" | sed -n 1p | cut -d, -f1 | tr -d ' ')"
+    mem="$(echo  "$r" | sed -n 1p | cut -d, -f2 | tr -d ' ')"
+    fits="$(echo "$r" | sed -n 2p | tr -d ' ')"
+    log="$(echo  "$r" | sed -n 3p)"
+    printf "  %-8s %-10s %-6s %-8s %-10s %s\n" \
+      "$a" "${id:--}" "${util:-?}%" "${mem:-?}MB" "${fits:-?}" "$(basename "${log:--}")"
+  done
+  if command -v vastai >/dev/null 2>&1 && vastai show user --raw >/dev/null 2>&1; then
+    vastai show instances --raw 2>/dev/null | "$PY" -c "
+import json,sys
+d=json.load(sys.stdin); t=sum(i.get('dph_total',0) for i in d)
+print(f'\n  burn rate: \${t:.2f}/h   \${t*24:.0f}/day   \${t*24*7:.0f}/week')" 2>/dev/null || true
+  fi
+}
+
+# ============================================================ watch — tmux dashboard
+cmd_watch() {
+  need_cmd tmux "install with: brew install tmux"
+  local aliases; aliases=($(fleet_aliases))
+  [ "${#aliases[@]}" -gt 0 ] || die "empty fleet — ./lab up <n> first"
+
+  tmux kill-session -t "$LOCAL_SESSION" 2>/dev/null || true
+  # window 0: the rolling status table
+  tmux new-session -d -s "$LOCAL_SESSION" -n dashboard \
+    "watch -n 20 '$LAB_ROOT/lab status'" 2>/dev/null \
+    || tmux new-session -d -s "$LOCAL_SESSION" -n dashboard \
+       "while :; do clear; $LAB_ROOT/lab status; sleep 20; done"
+
+  # one window per box, split: live log above, nvidia-smi below
+  for a in "${aliases[@]}"; do
+    tmux new-window -t "$LOCAL_SESSION" -n "$a" \
+      "ssh -t $a 'tail -F \$(ls -t /workspace/lab_*.log /workspace/*.log 2>/dev/null | head -1) 2>/dev/null || tmux attach -t $REMOTE_SESSION'"
+    tmux split-window -t "$LOCAL_SESSION:$a" -v -p 30 \
+      "ssh -t $a 'watch -n 5 nvidia-smi'"
+    tmux select-pane -t "$LOCAL_SESSION:$a".0
+  done
+  tmux select-window -t "$LOCAL_SESSION:dashboard"
+
+  hdr "tmux session '$LOCAL_SESSION'"
+  cat <<EOF
+  window 0   dashboard, refreshed every 20 s
+  windows    one per box: live job log on top, nvidia-smi below
+
+  Ctrl-b n / p   next / previous window
+  Ctrl-b d       detach (everything keeps running)
+  ./lab watch    reattach later
+
+EOF
+  tmux attach -t "$LOCAL_SESSION"
+}
+
+cmd_logs() {
+  local a="${1:?usage: ./lab logs <alias>}"
+  ssh -t "$a" 'tail -F $(ls -t /workspace/lab_*.log /workspace/*.log 2>/dev/null | head -1)'
+}
+
+# ============================================================ pull / down
+cmd_pull() { for a in $(_targets "${1:-}"); do hdr "pull $a"; bash "$REPRO_DIR/14_vast_pull_and_verify.sh" "$a" || bad "$a pull failed"; done; }
+
+cmd_down() {
+  if [ "${1:-}" = "--all" ]; then
+    for a in $(fleet_aliases); do
+      hdr "teardown $a"
+      bash "$REPRO_DIR/15_vast_teardown.sh" "$a" "$(fleet_id "$a")" && fleet_rm "$a" || bad "$a not destroyed"
+    done
+  else
+    local a="${1:-$SSH_ALIAS}"
+    bash "$REPRO_DIR/15_vast_teardown.sh" "$a" "$(fleet_id "$a")" && fleet_rm "$a"
+  fi
+  cmd_status
+}
+
+# ============================================================ mirror / docs
+cmd_mirror() {
+  need_py
+  hdr "Mirror maintenance — RETIRED in this form"
+  info "The old ./lab mirror was ADD-ONLY and globbed results/*.pt non-recursively, so after the"
+  info "operator tree was restructured it uploaded nothing and removed nothing. Both bugs are why"
+  info "the mirror carried two layouts at once."
+  echo
+  info "The canonical mirror is PUBLIC and already populated:"
+  info "  https://huggingface.co/AnonymousInterpScience/pythia-jlens-artifacts"
+  echo
+  info "Reviewers FETCH; they never push:"
+  info "  bash repro/04_fetch_results.sh          results JSON, ~8 MB"
+  info "  bash repro/03_fetch_artifacts.sh --all  operators, ~16 GB"
+  echo
+  info "To re-sync the mirror from a maintainer tree (content-exact, adds AND deletes):"
+  info "  .venv/bin/python tools/hf_canonical_sync.py"
+  info "  .venv/bin/python tools/hf_canonical_sync.py --apply"
+  info "  .venv/bin/python tools/hf_canonical_sync.py --verify"
+  return 0
+}
+
+# ============================================================ exp — the executable research modules
+# `repro/exp/*.sh` is the canonical invocation of each experiment: the exact flags that produced
+# the stored result. This verb is the index over them. It was documented in three places before it
+# existed, which is the kind of gap a reviewer finds first.
+cmd_exp() {
+  local sub="${1:-list}"; shift || true
+  case "$sub" in
+    list|"")
+      hdr "Executable research modules"
+      printf "   %-22s %-42s %s\n" "MODULE" "PRODUCES" "COST"
+      for f in "$REPRO_DIR"/exp/*.sh; do
+        [ "$(basename "$f")" = "_lib.sh" ] && continue
+        local id why cost outs
+        id="$(basename "$f" .sh)"
+        cost="$(sed -n 's/^MODULE_COST="\(.*\)"$/\1/p' "$f" | head -1)"
+        outs="$(sed -n 's/^OUTPUTS=(\(.*\))$/\1/p;s/^OUTPUTS=(\(.*\)$/\1/p' "$f" | head -1 \
+                | tr ' ' '\n' | head -1 | sed 's#results/##')"
+        printf "   %-22s %-42s %s\n" "$id" "${outs:-—}" "${cost:-unknown}"
+      done
+      echo
+      info "bash repro/exp/<module>.sh --dry-run   print the full contract, execute nothing"
+      info "./lab exp run <module>                 run it"
+      ;;
+    run)
+      local m="${1:?usage: ./lab exp run <module> [--dry-run] [--yes]}"; shift || true
+      local f="$REPRO_DIR/exp/${m%.sh}.sh"
+      [ -f "$f" ] || die "no such module: $m   (./lab exp list)"
+      bash "$f" "$@"
+      ;;
+    *) die "usage: ./lab exp [list|run <module>]" ;;
+  esac
+}
+
+cmd_docs() {
+  hdr "Rebuilding PDFs"
+  for f in "$REPO_ROOT"/specs/*.tex "$REPO_ROOT"/paper/paper.tex; do
+    [ -f "$f" ] || continue
+    ( cd "$(dirname "$f")" && \
+      pdflatex -interaction=batchmode "$(basename "$f")" >/dev/null 2>&1 || true
+      pdflatex -interaction=batchmode "$(basename "$f")" >/dev/null 2>&1 || true
+      b="$(basename "${f%.tex}")"
+      pages="$(grep -ao 'Output written.*(\([0-9]*\) page' "$b.log" 2>/dev/null | grep -o '[0-9]* page' | head -1)"
+      errs="$(grep -ac '^!' "$b.log" 2>/dev/null || echo 0)"
+      rm -f "$b".{aux,log,out,toc,lof,lot,fls,fdb_latexmk,synctex.gz,nav,snm,vrb,bbl,blg,idx,ind,ilg}
+      printf "  %-22s -> %s  [errors=%s %s]\n" "$(basename "$f")" "$b.pdf" "$errs" "$pages" )
+  done
+  ok "intermediates removed"
+}
+
+# ============================================================ dispatch
+case "${1:-map}" in
+  map|"")     cmd_map ;;
+  help|-h|--help) cmd_help ;;
+  doctor)     shift; cmd_doctor "$@" ;;
+  setup)      shift; cmd_setup "$@" ;;
+  verify)     shift; cmd_verify "$@" ;;
+  fetch)      shift; cmd_fetch "$@" ;;
+  cost)       shift; cmd_cost "$@" ;;
+  offers)     shift; cmd_offers "$@" ;;
+  up)         shift; cmd_up "$@" ;;
+  push)       shift; cmd_push "$@" ;;
+  preflight)  shift; cmd_preflight "$@" ;;
+  run)        shift; cmd_run "$@" ;;
+  shard)      shift; cmd_shard "$@" ;;
+  status)     shift; cmd_status "$@" ;;
+  watch)      shift; cmd_watch "$@" ;;
+  logs)       shift; cmd_logs "$@" ;;
+  pull)       shift; cmd_pull "$@" ;;
+  down)       shift; cmd_down "$@" ;;
+  health)     shift; cmd_health "$@" ;;
+  util)       shift; cmd_util "$@" ;;
+  mirror)     shift; cmd_mirror "$@" ;;
+  results)    shift; cmd_results "$@" ;;
+  exp)        shift; cmd_exp "$@" ;;
+  docs)       shift; cmd_docs "$@" ;;
+  *) echo "unknown command '$1'"; echo; cmd_help; exit 1 ;;
+esac

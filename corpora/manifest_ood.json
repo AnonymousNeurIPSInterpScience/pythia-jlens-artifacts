@@ -1,0 +1,218 @@
+{
+ "OOD_Wikipedia_2023": {
+  "file": "OOD_Wikipedia_2023.jsonl",
+  "n": 2400,
+  "sha256": "57fb26cf3997b571543281efe3330efcbab1f37e97f99eb6df4deaa027d98550",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "wikimedia/wikipedia",
+   "name": "20231101.en",
+   "split": "train"
+  },
+  "text_field": "text",
+  "claim": "TEMPORAL. Same source family as the Pile's Wikipedia component, but a 2023-11 snapshot. Revisions written after the ~2020 Pile snapshot cannot have been in it. Confounds: three years of new entities, events and editorial convention move with the exclusion. This is external review's PRIMARY recommended panel because it holds language and register nearly fixed.",
+  "scanned": 2436,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "OOD_arXiv_2023": {
+  "file": "OOD_arXiv_2023.jsonl",
+  "n": 2400,
+  "sha256": "565f3541ef189ba624ff56373d7d3df0b0341020578b0c6cffc6391b332ff4af",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "neuralwork/arxiver",
+   "split": "train"
+  },
+  "text_field": "markdown",
+  "claim": "TEMPORAL. 2023 arXiv papers; the Pile's arXiv component predates the snapshot. Stable LaTeX/scientific register. Confounds: new terminology, fields, authors; heavy template reuse means short-k overlap will be high regardless of exposure.",
+  "scanned": 2401,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "OOD_News_2024": {
+  "file": "OOD_News_2024.jsonl",
+  "n": 2400,
+  "sha256": "45aaab463d8987725fe9b7edb5bd316a29c2d547a5a1ffd2c54f41df3be1df80",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "RealTimeData/bbc_news_alltime",
+   "name": "2024-06",
+   "split": "train"
+  },
+  "text_field": "content",
+  "claim": "TEMPORAL. June 2024 news, four years past the snapshot. Ordinary English, so it tests transport without immediately confounding on script or competence. Confounds: news register, named entities, and possible syndication into web crawls.",
+  "scanned": 2930,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "OOD_CommonPile": {
+  "file": "OOD_CommonPile.jsonl",
+  "n": 2400,
+  "sha256": "0d7ca5e94b4b1891e1d99a310b263806f370bae861decdfc3cf0f1ebb7a755e4",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "common-pile/comma_v0.1_training_dataset",
+   "split": "train"
+  },
+  "text_field": "text",
+  "claim": "PROVENANCE. Assembled later from openly-licensed and public-domain sources, covering domains not deliberately represented in the Pile. Tests whether the effect is about corpus construction/licensing rather than topic. Confounds: licence filtering changes the source population; some documents may still be older web material.",
+  "scanned": 3069,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "TRAP_FineWeb": {
+  "file": "TRAP_FineWeb.jsonl",
+  "n": 2400,
+  "sha256": "6164a3cc1113f6c3b90fd5f67e3eba2e80324a69d9d4c0ae671aefdefc4b9260",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "HuggingFaceFW/fineweb",
+   "name": "sample-10BT",
+   "split": "train"
+  },
+  "text_field": "text",
+  "claim": "DELIBERATE POSITIVE CONTROL, NOT A CLEAN Q. FineWeb is Common-Crawl-derived and Pile-CC is too, so it can contain the same pages, later versions of them, or mirrors. Both external review reviews name CC derivatives as a trap. Included so M1 has something it MUST flag as overlapping: if FineWeb does not show high containment, M1 is broken.",
+  "scanned": 2708,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "CONTROL_PubMed_2023": {
+  "file": "CONTROL_PubMed_2023.jsonl",
+  "n": 2400,
+  "sha256": "cffa12d20484b15c2430fc402a994632a9a27595454d02b457b94ec80c27856a",
+  "seed_blocks": [
+   [
+    0,
+    800
+   ],
+   [
+    800,
+    1600
+   ],
+   [
+    1600,
+    2400
+   ]
+  ],
+  "hf": {
+   "path": "MedRAG/pubmed",
+   "split": "train"
+  },
+  "text_field": "content",
+  "claim": "AMBIGUOUS BY DESIGN. The Pile contains PubMed Central, so this is source-INCLUDED; only post-snapshot articles would be temporally excluded and this dump is not date-filtered. Expected to land BETWEEN the Pile components and the temporal panels, which makes it a useful mid-scale reference point for whatever divergence metric we fit.",
+  "scanned": 3161,
+  "status": "CANDIDATE \u2014 outside-Pile is a HYPOTHESIS to be measured by M1, not a property asserted here"
+ },
+ "OOD_News_2024_dedup": {
+  "file": "OOD_News_2024_dedup.jsonl",
+  "n": 1598,
+  "sha256": "713cdbcf4512208f4cb3cac831d2a4eeb76ae0fe577d215473fd71919d022529",
+  "seed_blocks": [
+   [
+    0,
+    532
+   ],
+   [
+    532,
+    1064
+   ],
+   [
+    1064,
+    1596
+   ]
+  ],
+  "seed_blocks_note": "computed as b = len(texts) // 3 at load time (experiments/trainval.py:256), so the blocks are NOT the 800/1600/2400 of the n=2400 corpora. Recorded explicitly because this corpus is shorter than every other entry here.",
+  "DERIVED": true,
+  "hf": null,
+  "hf_note": "INTENTIONALLY null. This corpus has NO independent upstream. It is produced deterministically from OOD_News_2024 by the rule below and must never be given a fabricated dataset revision. To regenerate it, rebuild the parent at the revision pinned in corpora/dataset_revisions.json and re-apply the rule.",
+  "derived_from": {
+   "parent": "OOD_News_2024",
+   "parent_file": "OOD_News_2024.jsonl",
+   "parent_sha256": "45aaab463d8987725fe9b7edb5bd316a29c2d547a5a1ffd2c54f41df3be1df80",
+   "parent_n": 2400,
+   "parent_upstream": {
+    "path": "RealTimeData/bbc_news_alltime",
+    "name": "2024-06",
+    "split": "train",
+    "sha": "8dd1ecdc92ac43f9c04a3da3e945537dbb08179b"
+   },
+   "rule": "exact-text deduplication: keep the FIRST occurrence of each distinct `text` value, preserving the parent's record order; drop every later exact duplicate",
+   "rule_verified": "verified 2026-09-01 by recomputation: first-occurrence dedup of the parent reproduces this file's text sequence exactly (order-sensitive equality True); sorted(distinct) does NOT (False), so the order is first-occurrence, not sorted",
+   "records_in": 2400,
+   "records_out": 1598,
+   "exact_duplicates_removed": 802,
+   "text_field": "text",
+   "is_strict_subset_of_parent": true
+  },
+  "claim": "DERIVED CONTROL. The 2024-06 BBC News panel with its 802 exact-duplicate records removed. It exists because the parent contains syndicated/repeated articles, which inflate any recurrence-based statistic. It is NOT an independent OOD rung: it shares the parent's upstream, register and time window entirely.",
+  "status": "DERIVED \u2014 provenance is the parent's plus the recorded rule. Excluded BY DESIGN from the E48b containment index (experiments/t48b_exposure_growth.py:77-81 --exclude default): it was created after the k-gram shards were built and is a strict subset of OOD_News_2024, so indexing it would double-count the parent's k-grams.",
+  "used_by": [
+   "results/e48/lens_OOD_News_2024_dedup_410m_n200_s{0,1,2}.pt",
+   "results/e48/tv_OOD_News_2024_dedup_s{0,1,2}.json"
+  ],
+  "scanned": null,
+  "recorded_on": "2026-09-01",
+  "recorded_why": "this corpus had operators fitted on it but NO entry in this manifest and NO row in corpora/dataset_revisions.json, whose README claims to be the source of truth for every corpus build. Gap closed by recording the derivation, not by inventing an upstream pin."
+ }
+}
